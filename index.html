@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search and Summarize</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #search-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        #search-input {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #search-button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        #search-button:hover {
+            background-color: #0056b3;
+        }
+        #results-container {
+            margin-top: 20px;
+        }
+        .result {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .summary {
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Search and Summarize</h1>
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Enter search term...">
+        <button id="search-button">Search</button>
+    </div>
+    <div id="results-container"></div>
+
+    <script type="module">
+        import { Client } from "@gradio/client";
+
+        const client = await Client.connect("sweatyh/facebook-bart-large-cnn");
+
+        document.getElementById('search-button').addEventListener('click', async () => {
+            const query = document.getElementById('search-input').value;
+            const resultsContainer = document.getElementById('results-container');
+
+            // Clear previous results
+            resultsContainer.innerHTML = '';
+
+            if (query) {
+                const results = await fetchResults(query);
+                await displayResults(results);
+            } else {
+                alert('Please enter a search term.');
+            }
+        });
+
+        async function fetchResults(query) {
+            const response = await fetch(`https://api.duckduckgo.com/?q=${query}&format=json&no_redirect=1`);
+            const data = await response.json();
+            return data.RelatedTopics;
+        }
+
+        async function displayResults(results) {
+            for (const topic of results) {
+                if (topic.Text) {
+                    const summary = await summarize(topic.Text); // AI summarization
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result';
+                    resultDiv.innerHTML = `
+                        <h3>${topic.Text}</h3>
+                        <a href="${topic.FirstURL}" target="_blank">${topic.FirstURL}</a>
+                        <p class="summary">${summary}</p>
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                }
+            }
+        }
+
+        async function summarize(text) {
+            const result = await client.predict("/predict", { param_0: text });
+            return result.data; // Access the summarized text
+        }
+    </script>
+</body>
+</html>
